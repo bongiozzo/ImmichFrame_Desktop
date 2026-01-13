@@ -67,6 +67,8 @@ jobs:
             args: --target x86_64-apple-darwin
           - platform: ubuntu-24.04
             args: ""
+          - platform: ubuntu-24.04-arm64
+            args: --target aarch64-unknown-linux-gnu
           - platform: windows-latest
             args: ""
     steps:
@@ -80,14 +82,19 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Setup Rust toolchain en targets
+      - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Rust targets toevoegen (macOS)
+        if: startsWith(matrix.platform, 'macos-')
+        shell: bash
+        run: |
+          rustup target add aarch64-apple-darwin x86_64-apple-darwin
 
       - name: Linux dependencies installeren
-        if: matrix.platform == 'ubuntu-24.04'
+        if: startsWith(matrix.platform, 'ubuntu-')
         run: |
           sudo apt-get update
           sudo apt-get install -y \
