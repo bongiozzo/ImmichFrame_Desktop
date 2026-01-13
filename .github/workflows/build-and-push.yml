@@ -10,6 +10,15 @@ on:
         description: 'Existing tag to upload assets to (e.g. v1.0.22)'
         required: true
         type: string
+      build:
+        description: 'Which targets to build'
+        required: true
+        default: hosted
+        type: choice
+        options:
+          - hosted
+          - arm64
+          - all
 
 permissions:
   contents: write
@@ -63,7 +72,7 @@ jobs:
 
   publish-tauri:
     needs: sync-version
-    if: ${{ always() && (needs.sync-version.result == 'success' || needs.sync-version.result == 'skipped') }}
+    if: ${{ always() && (needs.sync-version.result == 'success' || needs.sync-version.result == 'skipped') && (github.event_name != 'workflow_dispatch' || inputs.build != 'arm64') }}
     runs-on: ${{ matrix.runsOn }}
     strategy:
       fail-fast: false
@@ -147,7 +156,7 @@ jobs:
   publish-tauri-linux-arm64:
     name: publish-tauri (linux-arm64, self-hosted)
     needs: sync-version
-    if: ${{ github.event_name == 'workflow_dispatch' && (needs.sync-version.result == 'success' || needs.sync-version.result == 'skipped') }}
+    if: ${{ always() && github.event_name == 'workflow_dispatch' && (inputs.build == 'arm64' || inputs.build == 'all') && (needs.sync-version.result == 'success' || needs.sync-version.result == 'skipped') }}
     runs-on: [self-hosted, linux, arm64]
     steps:
       - name: Checkout updated main
