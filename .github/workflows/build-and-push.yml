@@ -42,11 +42,13 @@ jobs:
             src-tauri/tauri.conf.json > tmp.json && \
           mv tmp.json src-tauri/tauri.conf.json
 
-      - name: Bump npm version & lockfile
+      - name: Bump package.json version
         shell: bash
         run: |
-          npm install --no-save
-          npm version "${{ steps.extract_version.outputs.version }}" --no-git-tag-version
+          jq --arg v "${{ steps.extract_version.outputs.version }}" \
+            '.version = $v' \
+            package.json > tmp.json && \
+          mv tmp.json package.json
 
       - name: Commit version updates
         uses: stefanzweifel/git-auto-commit-action@v4
@@ -111,7 +113,7 @@ jobs:
             cpio
 
       - name: Frontend dependencies installeren
-        run: yarn install
+        run: yarn install --frozen-lockfile
 
       - name: Build en release via tauri-action
         uses: tauri-apps/tauri-action@v0.5.22
