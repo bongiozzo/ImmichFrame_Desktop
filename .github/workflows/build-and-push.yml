@@ -5,6 +5,11 @@ on:
     tags:
       - 'v*.*.*'
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to upload assets to (e.g. v1.0.22)'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -58,20 +63,27 @@ jobs:
 
   publish-tauri:
     needs: sync-version
-    runs-on: ${{ matrix.platform }}
+    if: ${{ always() && (needs.sync-version.result == 'success' || needs.sync-version.result == 'skipped') }}
+    runs-on: ${{ matrix.runsOn }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: macos-latest
+          - name: macos-aarch64
+            os: macos
+            runsOn: macos-latest
             args: --target aarch64-apple-darwin
-          - platform: macos-latest
+          - name: macos-x64
+            os: macos
+            runsOn: macos-latest
             args: --target x86_64-apple-darwin
-          - platform: ubuntu-24.04
+          - name: linux-x64
+            os: ubuntu
+            runsOn: ubuntu-24.04
             args: ""
-          - platform: ubuntu-24.04-arm64
-            args: --target aarch64-unknown-linux-gnu
-          - platform: windows-latest
+          - name: windows
+            os: windows
+            runsOn: windows-latest
             args: ""
     steps:
       - name: Checkout updated main
@@ -90,13 +102,13 @@ jobs:
           toolchain: stable
 
       - name: Rust targets toevoegen (macOS)
-        if: startsWith(matrix.platform, 'macos-')
+        if: matrix.os == 'macos'
         shell: bash
         run: |
           rustup target add aarch64-apple-darwin x86_64-apple-darwin
 
       - name: Linux dependencies installeren
-        if: startsWith(matrix.platform, 'ubuntu-')
+        if: matrix.os == 'ubuntu'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -120,12 +132,69 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "App ${{ github.ref_name }}"
+          tagName: ${{ inputs.tag || github.ref_name }}
+          releaseName: "App ${{ inputs.tag || github.ref_name }}"
           releaseBody: "Download de installatie via de assets."
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
+          projectPath: .
+          includeDebug: false
+          includeRelease: true
+          includeUpdaterJson: true
+          updaterJsonKeepUniversal: false
+
+  publish-tauri-linux-arm64:
+    name: publish-tauri (linux-arm64, self-hosted)
+    needs: sync-version
+    if: ${{ github.event_name == 'workflow_dispatch' && (needs.sync-version.result == 'success' || needs.sync-version.result == 'skipped') }}
+    runs-on: [self-hosted, linux, arm64]
+    steps:
+      - name: Checkout updated main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Linux dependencies installeren
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libjavascriptcoregtk-4.1-dev \
+            pkg-config \
+            libsoup-3.0-dev \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            rpm \
+            dpkg \
+            fakeroot \
+            cpio
+
+      - name: Frontend dependencies installeren
+        run: yarn install --frozen-lockfile
+
+      - name: Build en release via tauri-action
+        uses: tauri-apps/tauri-action@v0.5.22
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ inputs.tag }}
+          releaseName: "App ${{ inputs.tag }}"
+          releaseBody: "Download de installatie via de assets."
+          releaseDraft: false
+          prerelease: false
+          args: --target aarch64-unknown-linux-gnu
           projectPath: .
           includeDebug: false
           includeRelease: true
