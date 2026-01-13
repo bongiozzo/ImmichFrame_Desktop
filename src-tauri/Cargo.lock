@@ -1453,7 +1453,7 @@ dependencies = [
 
 [[package]]
 name = "immichframe"
-version = "1.0.21"
+version = "1.0.22"
 dependencies = [
  "dirs 4.0.0",
  "serde",
