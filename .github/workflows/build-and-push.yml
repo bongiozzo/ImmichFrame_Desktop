@@ -179,6 +179,8 @@ jobs:
     needs: sync-version
     if: ${{ always() && github.event_name == 'workflow_dispatch' && (inputs.build == 'arm64' || inputs.build == 'all') && (needs.sync-version.result == 'success' || needs.sync-version.result == 'skipped') }}
     runs-on: [self-hosted, linux, arm64]
+    env:
+      CARGO_BUILD_JOBS: '1'
     steps:
       - name: Checkout updated main
         uses: actions/checkout@v4
@@ -222,6 +224,29 @@ jobs:
             librsvg2-dev \
             dpkg \
             fakeroot
+
+      - name: Ensure swap (recommended on 2GB devices)
+        shell: bash
+        run: |
+          set -euxo pipefail
+          free -h || true
+          if swapon --show=NAME --noheadings | grep -q '^/swapfile$'; then
+            echo "/swapfile already active"
+            exit 0
+          fi
+          if [ ! -f /swapfile ]; then
+            # Prefer fallocate; fall back to dd for filesystems that don't support it
+            sudo fallocate -l 4G /swapfile 2>/dev/null || sudo dd if=/dev/zero of=/swapfile bs=1M count=4096 status=progress
+            sudo chmod 600 /swapfile
+            sudo mkswap /swapfile
+          fi
+          sudo swapon /swapfile
+          if ! grep -q '^/swapfile\s' /etc/fstab; then
+            echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab >/dev/null
+          fi
+          sudo sysctl -w vm.swappiness=10 || true
+          swapon --show || true
+          free -h || true
 
       - name: Frontend dependencies installeren
         run: yarn install --frozen-lockfile
