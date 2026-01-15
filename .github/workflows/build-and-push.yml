@@ -125,7 +125,7 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Rust targets toevoegen (macOS)
+      - name: Add Rust targets (macOS)
         if: matrix.os == 'macos'
         shell: bash
         run: |
