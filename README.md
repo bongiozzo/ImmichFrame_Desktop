@@ -29,7 +29,14 @@ Terminal=false
 
 # Notes:
 # - On some ARM/Mali Wayland setups, forcing GLES helps GTK/WebKit enable acceleration.
-Exec=sh -lc 'sleep 5; cd "$HOME/ImmichFrame"; export GDK_BACKEND=wayland; export GDK_GL=gles; exec immichframe >>"$HOME/.cache/immichframe.log" 2>&1'
+# - Optional watchdog/diagnostics env vars (off by default):
+#   - IMMICHFRAME_DEBUG_OVERLAY=1            Shows a small on-screen memory overlay (click to hide)
+#   - IMMICHFRAME_AUTO_RELOAD_MINUTES=60     Periodically hard-reloads the webview
+#   - IMMICHFRAME_AUTO_RESTART_MINUTES=180   Restarts the app after N minutes (most effective on low-RAM boards)
+Exec=sh -lc 'sleep 5; cd "$HOME/ImmichFrame"; export GDK_BACKEND=wayland; export GDK_GL=gles; export IMMICHFRAME_DEBUG_OVERLAY=1; export IMMICHFRAME_AUTO_RELOAD_MINUTES=60; exec immichframe >>"$HOME/.cache/immichframe.log" 2>&1'
+
+# Alternative (stronger workaround): replace AUTO_RELOAD with AUTO_RESTART, e.g.
+# Exec=sh -lc 'sleep 5; cd "$HOME/ImmichFrame"; export GDK_BACKEND=wayland; export GDK_GL=gles; export IMMICHFRAME_DEBUG_OVERLAY=1; export IMMICHFRAME_AUTO_RESTART_MINUTES=180; exec immichframe >>"$HOME/.cache/immichframe.log" 2>&1'
 ```
 
 ImmichFrame stores the configured URL in `~/.config/immichFrame/Settings.txt` on Linux.
